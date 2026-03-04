@@ -140,7 +140,7 @@ def parse_controls(pdf_path: str, profile_filter: Optional[str] = None) -> List[
 
             control_id = m.group("id")
             profile = m.group("profile")
-            assessment = m.group("assessment")
+            assessment = m.group("assessment") or "Unknown"
             raw_title = m.group("title")
 
             title, applicability = _split_title_applicability(raw_title)
