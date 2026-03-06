@@ -227,14 +227,94 @@ def write_report(rows: List[dict], out_path: Path) -> None:
         lines.append("## Eerste toegevoegde controls")
         lines.append("")
         for row in added[:10]:
-            lines.append(f"- `{row['control_id']}` ({row['profile']}): {row.get('title_new','')}")
+            lines.append(
+                f"- `{row['control_id']}` ({row['profile']}): {row.get('title_new','')}"
+            )
         lines.append("")
 
     if removed:
         lines.append("## Eerste verwijderde controls")
         lines.append("")
         for row in removed[:10]:
-            lines.append(f"- `{row['control_id']}` ({row['profile']}): {row.get('title_old','')}")
+            lines.append(
+                f"- `{row['control_id']}` ({row['profile']}): {row.get('title_old','')}"
+            )
+        lines.append("")
+
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_full_report(rows: List[dict], out_path: Path) -> None:
+    added = [r for r in rows if r["change_type"] == "added"]
+    removed = [r for r in rows if r["change_type"] == "removed"]
+    changed = [r for r in rows if r["change_type"] == "changed"]
+
+    field_counter = Counter()
+    for row in changed:
+        for field in row.get("field_diffs", {}).keys():
+            field_counter[field] += 1
+
+    lines: List[str] = []
+    lines.append("# CIS Diff Full Report")
+    lines.append("")
+    lines.append(f"- Totaal wijzigingen: **{len(rows)}**")
+    lines.append(f"- Added: **{len(added)}**")
+    lines.append(f"- Removed: **{len(removed)}**")
+    lines.append(f"- Changed: **{len(changed)}**")
+    lines.append("")
+
+    if changed:
+        lines.append("## Meest gewijzigde velden")
+        lines.append("")
+        for field, count in field_counter.most_common():
+            lines.append(f"- `{field}`: {count}")
+        lines.append("")
+
+        lines.append("## Alle gewijzigde controls")
+        lines.append("")
+        for row in changed:
+            lines.append(f"### `{row['control_id']}` ({row['profile']})")
+            lines.append("")
+            lines.append(f"- Oude versie: `{row.get('old_benchmark_version', '')}`")
+            lines.append(f"- Nieuwe versie: `{row.get('new_benchmark_version', '')}`")
+            lines.append(f"- Gewijzigde velden: `{row.get('fields_changed', '')}`")
+            lines.append(f"- Oude titel: {row.get('title_old', '')}")
+            lines.append(f"- Nieuwe titel: {row.get('title_new', '')}")
+            lines.append("")
+
+            field_diffs = row.get("field_diffs", {})
+            for field, diff in field_diffs.items():
+                lines.append(f"#### Veld: `{field}`")
+                lines.append("")
+                lines.append("**Oud:**")
+                lines.append("")
+                lines.append("```")
+                lines.append(diff.get("old", ""))
+                lines.append("```")
+                lines.append("")
+                lines.append("**Nieuw:**")
+                lines.append("")
+                lines.append("```")
+                lines.append(diff.get("new", ""))
+                lines.append("```")
+                lines.append("")
+
+    if added:
+        lines.append("## Alle toegevoegde controls")
+        lines.append("")
+        for row in added:
+            lines.append(
+                f"- `{row['control_id']}` ({row['profile']}): {row.get('title_new','')}"
+            )
+        lines.append("")
+
+    if removed:
+        lines.append("## Alle verwijderde controls")
+        lines.append("")
+        for row in removed:
+            lines.append(
+                f"- `{row['control_id']}` ({row['profile']}): {row.get('title_old','')}"
+            )
         lines.append("")
 
     out_path.write_text("\n".join(lines), encoding="utf-8")
@@ -246,7 +326,8 @@ def main(argv=None) -> int:
     p.add_argument("new_file", help="New baseline JSONL")
     p.add_argument("-o", "--output", required=True, help="Output file path (csv or jsonl)")
     p.add_argument("--format", choices=["csv", "jsonl"], default=None)
-    p.add_argument("--report", help="Optional markdown report output path")
+    p.add_argument("--report", help="Optional markdown summary report output path")
+    p.add_argument("--full-report", help="Optional markdown full report output path")
 
     args = p.parse_args(argv)
 
@@ -271,6 +352,9 @@ def main(argv=None) -> int:
 
     if args.report:
         write_report(changes, Path(args.report))
+
+    if args.full_report:
+        write_full_report(changes, Path(args.full_report))
 
     print(f"changes: {len(changes)}")
     print(f"added: {sum(1 for r in changes if r['change_type'] == 'added')}")
