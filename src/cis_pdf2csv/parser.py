@@ -87,6 +87,62 @@ def _normalize_heading(line: str) -> str:
     return line.strip().rstrip(":").strip().lower()
 
 
+def _looks_like_control_start(line: str) -> bool:
+    """
+    Heuristic: does this line look like the start of a CIS control header?
+    Example:
+    18.10.15.2 Ensure 'Enumerate administrator accounts on ...
+    """
+    return bool(re.match(r"^\d+(?:\.\d+)+\s+", line))
+
+
+def _consume_multiline_header(
+    lines: List[Tuple[int, str]],
+    start_index: int,
+) -> Tuple[str, int]:
+    """
+    Consume one or more lines that together form a single control header.
+
+    Returns:
+        (combined_header_text, last_consumed_index)
+
+    Logic:
+    - Start from a line that looks like a control header.
+    - If the line already contains (Automated) or (Manual), we assume it is complete.
+    - Otherwise, append following lines until:
+      - (Automated) or (Manual) appears, or
+      - the next line looks like a new control start, or
+      - a known body section heading starts.
+    """
+    page, line = lines[start_index]
+    candidate = line
+
+    if "(Automated)" in candidate or "(Manual)" in candidate:
+        return candidate, start_index
+
+    i = start_index + 1
+    while i < len(lines):
+        _, next_line = lines[i]
+        normalized_next = _normalize_heading(next_line)
+
+        # Stop if we appear to hit the next control
+        if _looks_like_control_start(next_line):
+            break
+
+        # Stop if we hit a body heading
+        if normalized_next in SECTION_CANONICAL_MAP:
+            break
+
+        candidate = f"{candidate} {next_line}".strip()
+
+        if "(Automated)" in candidate or "(Manual)" in candidate:
+            return candidate, i
+
+        i += 1
+
+    return candidate, i - 1 if i > start_index else start_index
+
+
 def find_body_start_page(pdf_path: str) -> int:
     """
     Detect where the actual control body begins.
@@ -204,7 +260,6 @@ def parse_controls(pdf_path: str, profile_filter: Optional[str] = None) -> List[
         pdf_hash = sha256_bytes(f.read())
 
     bench_name, bench_version, bench_date = extract_benchmark_meta(pdf_path)
-
     start_page = find_body_start_page(pdf_path)
 
     controls: List[Dict] = []
@@ -213,10 +268,21 @@ def parse_controls(pdf_path: str, profile_filter: Optional[str] = None) -> List[
     current_lines: List[str] = []
     current_end_page: Optional[int] = None
 
-    for page, line in iter_pdf_lines(pdf_path, start_page):
-        m = RE_HEADER.match(line)
+    lines = list(iter_pdf_lines(pdf_path, start_page))
+    i = 0
+
+    while i < len(lines):
+        page, line = lines[i]
+
+        m = None
+        last_header_index = i
+
+        if _looks_like_control_start(line):
+            header_candidate, last_header_index = _consume_multiline_header(lines, i)
+            m = RE_HEADER.match(header_candidate)
 
         if m:
+            # Finalize previous control
             if current:
                 block_text = "\n".join(current_lines).strip()
 
@@ -227,11 +293,9 @@ def parse_controls(pdf_path: str, profile_filter: Optional[str] = None) -> List[
 
                 if _is_real_control(sections):
                     current.update(sections)
-
                     current["profile"] = _profile_from_applicability(
                         current.get("applicability")
                     )
-
                     controls.append(current)
 
             control_id = m.group("id")
@@ -253,18 +317,25 @@ def parse_controls(pdf_path: str, profile_filter: Optional[str] = None) -> List[
                 page_end=page,
                 source_pdf_sha256=pdf_hash,
                 extracted_at_utc=_utc_now(),
-                parser_version="0.3.0",
+                parser_version="0.4.0",
                 block_text_sha256="",
             )
 
             current_lines = []
-            current_end_page = page
+            current_end_page = lines[last_header_index][0]
+
+            # Skip consumed header lines
+            i = last_header_index + 1
+            continue
 
         else:
             if current:
                 current_lines.append(line)
                 current_end_page = page
 
+        i += 1
+
+    # Finalize last control
     if current:
         block_text = "\n".join(current_lines).strip()
 
@@ -275,16 +346,13 @@ def parse_controls(pdf_path: str, profile_filter: Optional[str] = None) -> List[
 
         if _is_real_control(sections):
             current.update(sections)
-
             current["profile"] = _profile_from_applicability(
                 current.get("applicability")
             )
-
             controls.append(current)
 
     if profile_filter:
         pf = profile_filter.upper()
-
         controls = [
             c for c in controls if (c.get("profile") or "").upper() == pf
         ]
