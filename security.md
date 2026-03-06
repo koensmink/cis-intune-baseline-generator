@@ -1,3 +1,18 @@
+## Vulnerability scanning
+
+Container images may report OS-level vulnerabilities originating from the base image.
+
+At the time of release these vulnerabilities have **no upstream fixes available**.
+
+The container runtime is hardened using:
+
+- non-root user
+- read-only filesystem
+- dropped capabilities
+- no-new-privileges
+
+When upstream patches become available the base image will be updated.
+
 # Threat Model (STRIDE)
 
 Dit project gebruikt het **STRIDE threat model** om potentiële risico's
