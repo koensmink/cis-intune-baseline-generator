@@ -29,13 +29,15 @@ docker build -t cis-pdf2csv .
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv \
   python -m cis_pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v1.0.0.pdf -p L1 -o out.csv
 ```
+  
 Docker (re)build: 
 
 ```bash
 docker build --no-cache -t cis-pdf2csv .
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv \
-  python -m cis_pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v1.0.0.pdf -p L1 -o out.csv
+  ./CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.cs
 ```
+
 Docker run (hardened):
 ```docker-run
 docker run --rm \
