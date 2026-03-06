@@ -1,105 +1,91 @@
 
 # cis-pdf2csv
 
-Convert **CIS Benchmark PDF files** (primarily Windows Server benchmarks) into structured datasets and detect differences between benchmark versions.
+![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![Docker](https://img.shields.io/badge/docker-supported-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-The tool extracts CIS controls from PDF and exports them to **CSV or JSONL**, enabling automation, auditing and version comparison of CIS hardening baselines.
+Convert **CIS Benchmark PDFs** into structured datasets and detect **changes between benchmark versions**.
 
----
+`cis-pdf2csv` parses CIS Benchmark documents (primarily **Windows Server benchmarks**) and exports every control into machine‑readable formats such as **CSV** and **JSONL**.  
+It also includes a **diff engine** that compares benchmark versions and generates detailed reports.
 
-# Project purpose
-
-CIS benchmarks are distributed as PDF documents.  
-While readable for humans, they are difficult to:
-
-- compare across benchmark versions
-- process automatically
-- integrate into governance tooling
-- analyze in Excel / Power BI
-- track changes between benchmark revisions
-
-`cis-pdf2csv` creates a reproducible pipeline:
-
-CIS PDF → parser → CSV / JSONL → diff → reports
+Designed for **security engineers, auditors, and governance teams** who need reproducible benchmark analysis.
 
 ---
 
-# Features
+# ✨ Features
 
-- Parse **CIS Windows Server benchmark PDFs**
-- Extract full control metadata including:
+- Parse **CIS Windows Server Benchmark PDFs**
+- Extract full control metadata:
   - description
   - rationale
   - impact
-  - audit
-  - remediation
+  - audit procedure
+  - remediation procedure
   - default value
   - references
 - Filter controls by profile (`L1`, `L2`, `NG`)
-- Export to:
-  - CSV (Excel friendly)
-  - JSONL (automation friendly)
-- Generate **diffs between benchmark versions**
-- Produce reports:
+- Export formats:
+  - **CSV** (Excel friendly)
+  - **JSONL** (automation friendly)
+- **Diff benchmark versions**
+- Generate reports:
   - `changes.csv`
   - `report.md`
   - `report_full.md`
-- Evidence-grade extraction with hashes and page references
-- Hardened container runtime
+- Evidence-grade extraction with:
+  - page references
+  - SHA256 integrity hashes
+- Hardened Docker runtime
 
 ---
 
-# Example pipeline
+# 🧠 Pipeline
 
 ```
 CIS Benchmark PDF
-        ↓
+        │
+        ▼
      parser.py
-        ↓
+        │
+        ▼
    CSV / JSONL export
-        ↓
+        │
+        ▼
       diff.py
-        ↓
+        │
+        ▼
 changes.csv / report.md / report_full.md
 ```
 
 ---
 
-# Output fields
+# 📦 Project structure
 
-Example CSV/JSONL fields:
-
-| Field | Description |
-|------|-------------|
-benchmark_name | Name of the CIS benchmark |
-benchmark_version | Version extracted from PDF |
-benchmark_date | Benchmark publication date |
-control_id | CIS control ID |
-profile | L1 / L2 / NG |
-title | Control title |
-assessment | Automated / Manual |
-applicability | MS only / DC only etc |
-description | Description |
-rationale | Rationale |
-impact | Impact |
-audit | Audit procedure |
-remediation | Remediation procedure |
-default_value | Default value |
-references | References |
-page_start | Control start page |
-page_end | Control end page |
-source_pdf_sha256 | SHA256 of source PDF |
-block_text_sha256 | SHA256 of control block |
-parser_version | Parser version |
-extracted_at_utc | Extraction timestamp |
+```
+cis-pdf2csv
+├─ src/
+│  └─ cis_pdf2csv/
+│     ├─ __main__.py
+│     ├─ cli.py
+│     ├─ parser.py
+│     ├─ diff.py
+│     └─ schema.py
+├─ Dockerfile
+├─ requirements.txt
+├─ pyproject.toml
+├─ README.md
+└─ SECURITY.md
+```
 
 ---
 
-# Installation
+# ⚙️ Installation
 
 ## Local (Python)
 
-```
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -108,47 +94,45 @@ python -m cis_pdf2csv --help
 
 ## Docker
 
-Build container:
-
-```
+```bash
 docker build --no-cache -t cis-pdf2csv .
 ```
 
 ---
 
-# Usage
+# 🚀 Usage
 
 ## Parse CIS benchmark
 
-```
+```bash
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
 ```
 
-Export JSONL:
+## Export JSONL
 
-```
+```bash
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark.pdf -p L1 -o out.jsonl --format jsonl
 ```
 
 ---
 
-# Diff between benchmark versions
+# 🔍 Diff benchmark versions
 
 Export baseline 1:
 
-```
+```bash
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark_v1.pdf -p L1 -o v1.jsonl --format jsonl
 ```
 
 Export baseline 2:
 
-```
+```bash
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark_v2.pdf -p L1 -o v2.jsonl --format jsonl
 ```
 
 Run diff:
 
-```
+```bash
 docker run --rm -v "$PWD:/work" -w /work --entrypoint python cis-pdf2csv -m cis_pdf2csv.diff v1.jsonl v2.jsonl -o changes.csv --report report.md --full-report report_full.md
 ```
 
@@ -163,7 +147,7 @@ changed: 208
 
 ---
 
-# Reports
+# 📊 Reports
 
 ## changes.csv
 
@@ -171,7 +155,7 @@ Machine readable overview of all changes.
 
 ## report.md
 
-Summary report including:
+Summary including:
 
 - total changes
 - added controls
@@ -181,24 +165,49 @@ Summary report including:
 
 ## report_full.md
 
-Detailed report including:
+Full audit report including:
 
 - old vs new benchmark version
 - changed fields per control
-- full field comparison (old vs new values)
-
-Useful for **audit and review purposes**.
+- complete value comparison
 
 ---
 
-# Parser behaviour
+# 📄 Output schema
+
+| Field | Description |
+|------|-------------|
+benchmark_name | CIS benchmark name |
+benchmark_version | Benchmark version |
+benchmark_date | Publication date |
+control_id | CIS control ID |
+profile | L1 / L2 / NG |
+title | Control title |
+assessment | Automated / Manual |
+description | Description |
+rationale | Rationale |
+impact | Impact |
+audit | Audit procedure |
+remediation | Remediation |
+default_value | Default value |
+references | References |
+page_start | Control start page |
+page_end | Control end page |
+source_pdf_sha256 | Source PDF hash |
+block_text_sha256 | Control block hash |
+parser_version | Parser version |
+extracted_at_utc | Extraction timestamp |
+
+---
+
+# 🧩 Parser behaviour
 
 The parser:
 
-1. Detects where the **real benchmark body starts**
+1. Detects where the **actual benchmark body starts**
 2. Skips the **table of contents**
-3. Detects control headers
-4. Splits control blocks by known CIS section headings
+3. Identifies control headers
+4. Splits sections based on CIS headings
 
 Supported headings:
 
@@ -212,46 +221,42 @@ Supported headings:
 
 ---
 
-# CSV and Excel compatibility
-
-CSV exports use **UTF-8 with BOM (`utf-8-sig`)** to improve compatibility with Excel on Windows.
-
-Multiline fields such as audit or remediation are normalized so they remain inside a single CSV cell.
-
-Recommended usage:
+# 📈 CSV vs JSONL
 
 | Format | Use case |
 |------|------|
-JSONL | automation, diffing |
-CSV | Excel analysis and reporting |
+JSONL | automation / diffing |
+CSV | Excel / reporting |
+
+CSV is written using **UTF‑8 BOM** to improve compatibility with **Excel on Windows**.
 
 ---
 
-# Security
+# 🔐 Security
 
-The container runtime is designed for safe processing of untrusted PDFs.
+The container is designed for processing **potentially untrusted PDFs**.
 
-Security measures include:
+Security measures:
 
-- non-root container user
-- read-only filesystem support
-- no-new-privileges
-- dropped Linux capabilities
-- block-level hashing for integrity verification
+- non‑root container user
+- read‑only filesystem support
+- `no-new-privileges`
+- `cap-drop ALL`
+- block hashing for integrity verification
 
-See `SECURITY.md` for the STRIDE threat model.
+See **SECURITY.md** for the STRIDE threat model.
 
 ---
 
-# Limitations
+# ⚠️ Limitations
 
-- Currently optimized for **Windows Server CIS benchmarks**
+- Optimized for **Windows Server CIS benchmarks**
 - Layout changes in CIS PDFs may require parser adjustments
-- Control renumbering between versions may appear as added/removed instead of renamed
+- Control renumbering between versions may appear as added/removed
 
 ---
 
-# License
+# 📜 License
 
 MIT (code only).
 
