@@ -22,7 +22,7 @@ DIFF_FIELDS = [
 
 
 def _load_jsonl(path: Path) -> List[dict]:
-    rows = []
+    rows: List[dict] = []
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -31,16 +31,22 @@ def _load_jsonl(path: Path) -> List[dict]:
     return rows
 
 
-def _record_key(row: dict) -> Tuple[str, str, str, str]:
+def _record_key(row: dict) -> Tuple[str, str, str]:
+    """
+    Key for cross-version CIS benchmark diffing.
+
+    Important:
+    benchmark_version is intentionally NOT part of the key,
+    because we want to compare controls between benchmark revisions.
+    """
     return (
         row.get("benchmark_name", ""),
-        row.get("benchmark_version", ""),
         row.get("profile", ""),
         row.get("control_id", ""),
     )
 
 
-def _norm(v):
+def _norm(v) -> str:
     if v is None:
         return ""
     if not isinstance(v, str):
@@ -49,20 +55,22 @@ def _norm(v):
 
 
 def diff_records(old_rows: List[dict], new_rows: List[dict]) -> List[dict]:
-    old_map: Dict[Tuple[str, str, str, str], dict] = {_record_key(r): r for r in old_rows}
-    new_map: Dict[Tuple[str, str, str, str], dict] = {_record_key(r): r for r in new_rows}
+    old_map: Dict[Tuple[str, str, str], dict] = {_record_key(r): r for r in old_rows}
+    new_map: Dict[Tuple[str, str, str], dict] = {_record_key(r): r for r in new_rows}
 
     changes: List[dict] = []
 
     old_keys = set(old_map.keys())
     new_keys = set(new_map.keys())
 
+    # Added
     for key in sorted(new_keys - old_keys):
         r = new_map[key]
         changes.append({
             "change_type": "added",
             "benchmark_name": r.get("benchmark_name", ""),
-            "benchmark_version": r.get("benchmark_version", ""),
+            "old_benchmark_version": "",
+            "new_benchmark_version": r.get("benchmark_version", ""),
             "profile": r.get("profile", ""),
             "control_id": r.get("control_id", ""),
             "fields_changed": "",
@@ -72,12 +80,14 @@ def diff_records(old_rows: List[dict], new_rows: List[dict]) -> List[dict]:
             "new_block_text_sha256": r.get("block_text_sha256", ""),
         })
 
+    # Removed
     for key in sorted(old_keys - new_keys):
         r = old_map[key]
         changes.append({
             "change_type": "removed",
             "benchmark_name": r.get("benchmark_name", ""),
-            "benchmark_version": r.get("benchmark_version", ""),
+            "old_benchmark_version": r.get("benchmark_version", ""),
+            "new_benchmark_version": "",
             "profile": r.get("profile", ""),
             "control_id": r.get("control_id", ""),
             "fields_changed": "",
@@ -87,6 +97,7 @@ def diff_records(old_rows: List[dict], new_rows: List[dict]) -> List[dict]:
             "new_block_text_sha256": "",
         })
 
+    # Changed
     for key in sorted(old_keys & new_keys):
         old = old_map[key]
         new = new_map[key]
@@ -100,7 +111,8 @@ def diff_records(old_rows: List[dict], new_rows: List[dict]) -> List[dict]:
             changes.append({
                 "change_type": "changed",
                 "benchmark_name": new.get("benchmark_name", ""),
-                "benchmark_version": new.get("benchmark_version", ""),
+                "old_benchmark_version": old.get("benchmark_version", ""),
+                "new_benchmark_version": new.get("benchmark_version", ""),
                 "profile": new.get("profile", ""),
                 "control_id": new.get("control_id", ""),
                 "fields_changed": ",".join(changed_fields),
@@ -117,7 +129,8 @@ def write_csv(rows: List[dict], out_path: Path) -> None:
     fieldnames = [
         "change_type",
         "benchmark_name",
-        "benchmark_version",
+        "old_benchmark_version",
+        "new_benchmark_version",
         "profile",
         "control_id",
         "fields_changed",
@@ -128,10 +141,14 @@ def write_csv(rows: List[dict], out_path: Path) -> None:
     ]
 
     with out_path.open("w", newline="", encoding="utf-8-sig") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
-        w.writeheader()
+        writer = csv.DictWriter(
+            f,
+            fieldnames=fieldnames,
+            quoting=csv.QUOTE_ALL,
+        )
+        writer.writeheader()
         for row in rows:
-            w.writerow(row)
+            writer.writerow(row)
 
 
 def write_jsonl(rows: List[dict], out_path: Path) -> None:
@@ -152,6 +169,7 @@ def main(argv=None) -> int:
     old_path = Path(args.old_file)
     new_path = Path(args.new_file)
     out_path = Path(args.output)
+
     out_fmt = args.format or out_path.suffix.lower().lstrip(".")
 
     if out_fmt not in ("csv", "jsonl"):
@@ -159,6 +177,7 @@ def main(argv=None) -> int:
 
     old_rows = _load_jsonl(old_path)
     new_rows = _load_jsonl(new_path)
+
     changes = diff_records(old_rows, new_rows)
 
     if out_fmt == "csv":
@@ -170,6 +189,7 @@ def main(argv=None) -> int:
     print(f"added: {sum(1 for r in changes if r['change_type'] == 'added')}")
     print(f"removed: {sum(1 for r in changes if r['change_type'] == 'removed')}")
     print(f"changed: {sum(1 for r in changes if r['change_type'] == 'changed')}")
+
     return 0
 
 
