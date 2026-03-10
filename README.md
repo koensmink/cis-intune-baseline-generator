@@ -272,27 +272,6 @@ Planned improvements:
 
 ---
 
-# Contributing
-
-Contributions are welcome.
-
-Recommended workflow:
-
-1. Identify unmapped controls in `manual_review.csv`
-2. Review `suggested_mappings.jsonl`
-3. Promote mappings to rule packs
-4. Add tests
-5. Submit PR
-
----
-
 # License
 
 MIT License
-
----
-
-# Author
-
-Koen Smink  
-Security Engineering / Automation
