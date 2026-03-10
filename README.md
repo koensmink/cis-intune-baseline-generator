@@ -23,17 +23,9 @@ The following pipeline shows how CIS benchmarks are transformed into Intune base
 
 ![Architecture](docs/architecture.svg)
 
-Pipeline overview:
+![Mapping Flow](docs/mapping_flow.svg)
 
-CIS Benchmark PDF  
-→ CIS Parser  
-→ JSONL Control Dataset  
-→ Normalizer  
-→ Value Parser  
-→ Rule Engine  
-→ Baseline + Manual Review  
-→ LLM Suggestion Engine  
-→ Suggested mappings
+![Policy Generation](docs/policy_generation.svg)
 
 ---
 
