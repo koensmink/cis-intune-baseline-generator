@@ -116,7 +116,7 @@ docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./CIS_Microsoft_Windows_Ser
 ```
 
 ```bash
-podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
+podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv >>CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
 ```
 
 ## Export JSONL
