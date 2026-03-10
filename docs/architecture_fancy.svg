@@ -1,0 +1,178 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="card1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="card2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="card3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="card4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="card5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#be123c"/>
+      <stop offset="100%" stop-color="#f43f5e"/>
+    </linearGradient>
+    <linearGradient id="card6" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#374151"/>
+      <stop offset="100%" stop-color="#6b7280"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0,0 14,7 0,14" fill="#93c5fd"/>
+    </marker>
+    <style>
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 700; fill: #f8fafc; }
+      .subtitle { font-family: Arial, Helvetica, sans-serif; font-size: 16px; fill: #cbd5e1; }
+      .card-title { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; fill: white; }
+      .card-text { font-family: Arial, Helvetica, sans-serif; font-size: 15px; fill: rgba(255,255,255,0.95); }
+      .small { font-family: Arial, Helvetica, sans-serif; font-size: 14px; fill: #e5e7eb; }
+      .section-title { font-family: Arial, Helvetica, sans-serif; font-size: 18px; font-weight: 700; fill: #f8fafc; }
+      .artifact { font-family: Arial, Helvetica, sans-serif; font-size: 14px; fill: #0f172a; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="760" fill="url(#bg)"/>
+
+  <!-- Decorative background -->
+  <circle cx="1180" cy="90" r="180" fill="#1e293b" opacity="0.55"/>
+  <circle cx="1280" cy="620" r="220" fill="#172554" opacity="0.40"/>
+  <circle cx="170" cy="650" r="160" fill="#0f766e" opacity="0.12"/>
+
+  <text x="70" y="72" class="title">cis-pdf2csv · CIS → Intune Baseline Pipeline</text>
+  <text x="70" y="102" class="subtitle">Deterministic parsing and rule-based mapping, with optional LLM-assisted suggestions for unresolved controls.</text>
+
+  <!-- Main pipeline cards -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="170" rx="24" ry="24" width="180" height="150" fill="url(#card1)"/>
+    <text x="95" y="215" class="card-title">1. CIS PDF</text>
+    <text x="95" y="245" class="card-text">Benchmark source</text>
+    <text x="95" y="270" class="card-text">Windows / macOS /</text>
+    <text x="95" y="292" class="card-text">future platform input</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="300" y="170" rx="24" ry="24" width="210" height="150" fill="url(#card2)"/>
+    <text x="325" y="215" class="card-title">2. Parser</text>
+    <text x="325" y="245" class="card-text">Extract controls, pages,</text>
+    <text x="325" y="267" class="card-text">descriptions, audit,</text>
+    <text x="325" y="289" class="card-text">remediation, defaults</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="560" y="170" rx="24" ry="24" width="230" height="150" fill="url(#card3)"/>
+    <text x="585" y="215" class="card-title">3. Normalizer</text>
+    <text x="585" y="245" class="card-text">Clean titles, strip PDF</text>
+    <text x="585" y="267" class="card-text">artifacts, detect families,</text>
+    <text x="585" y="289" class="card-text">set quality flags</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="840" y="170" rx="24" ry="24" width="220" height="150" fill="url(#card4)"/>
+    <text x="865" y="215" class="card-title">4. Value Parser</text>
+    <text x="865" y="245" class="card-text">Enabled / Disabled</text>
+    <text x="865" y="267" class="card-text">thresholds, enums,</text>
+    <text x="865" y="289" class="card-text">audit masks, principals</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1110" y="170" rx="24" ry="24" width="220" height="150" fill="url(#card5)"/>
+    <text x="1135" y="215" class="card-title">5. Rule Engine</text>
+    <text x="1135" y="245" class="card-text">Deterministic rule packs</text>
+    <text x="1135" y="267" class="card-text">Resolver + confidence</text>
+    <text x="1135" y="289" class="card-text">Intune target selection</text>
+  </g>
+
+  <!-- Main arrows -->
+  <line x1="250" y1="245" x2="300" y2="245" stroke="#93c5fd" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="510" y1="245" x2="560" y2="245" stroke="#93c5fd" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="790" y1="245" x2="840" y2="245" stroke="#93c5fd" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="1060" y1="245" x2="1110" y2="245" stroke="#93c5fd" stroke-width="5" marker-end="url(#arrow)"/>
+
+  <!-- Rule packs panel -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="390" rx="26" ry="26" width="510" height="280" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="100" y="430" class="section-title">Windows Server rule packs</text>
+
+    <rect x="100" y="455" rx="14" ry="14" width="140" height="42" fill="#1e3a8a"/>
+    <text x="115" y="482" class="small">Account policies</text>
+
+    <rect x="255" y="455" rx="14" ry="14" width="140" height="42" fill="#0f766e"/>
+    <text x="282" y="482" class="small">Audit policy</text>
+
+    <rect x="410" y="455" rx="14" ry="14" width="140" height="42" fill="#7c3aed"/>
+    <text x="425" y="482" class="small">Security options</text>
+
+    <rect x="100" y="515" rx="14" ry="14" width="140" height="42" fill="#b45309"/>
+    <text x="136" y="542" class="small">Defender</text>
+
+    <rect x="255" y="515" rx="14" ry="14" width="140" height="42" fill="#dc2626"/>
+    <text x="299" y="542" class="small">Firewall</text>
+
+    <rect x="410" y="515" rx="14" ry="14" width="140" height="42" fill="#4f46e5"/>
+    <text x="420" y="542" class="small">Credential guard</text>
+
+    <rect x="100" y="575" rx="14" ry="14" width="140" height="42" fill="#0f766e"/>
+    <text x="142" y="602" class="small">Event log</text>
+
+    <rect x="255" y="575" rx="14" ry="14" width="140" height="42" fill="#1d4ed8"/>
+    <text x="287" y="602" class="small">Remote access</text>
+
+    <rect x="410" y="575" rx="14" ry="14" width="140" height="42" fill="#374151"/>
+    <text x="430" y="602" class="small">Future families</text>
+  </g>
+
+  <!-- Outputs panel -->
+  <g filter="url(#shadow)">
+    <rect x="640" y="390" rx="26" ry="26" width="300" height="280" fill="#f8fafc"/>
+    <text x="670" y="430" class="section-title" fill="#0f172a">Output artifacts</text>
+
+    <rect x="670" y="455" rx="12" ry="12" width="240" height="42" fill="#dbeafe"/>
+    <text x="692" y="481" class="artifact">baseline.csv</text>
+
+    <rect x="670" y="512" rx="12" ry="12" width="240" height="42" fill="#fee2e2"/>
+    <text x="692" y="538" class="artifact">manual_review.csv</text>
+
+    <rect x="670" y="569" rx="12" ry="12" width="240" height="42" fill="#dcfce7"/>
+    <text x="692" y="595" class="artifact">intune_policies.json</text>
+
+    <rect x="670" y="626" rx="12" ry="12" width="240" height="42" fill="#fef3c7"/>
+    <text x="692" y="652" class="artifact">suggested_mappings.jsonl</text>
+  </g>
+
+  <!-- LLM panel -->
+  <g filter="url(#shadow)">
+    <rect x="990" y="390" rx="26" ry="26" width="340" height="280" fill="#111827" stroke="#334155" stroke-width="2"/>
+    <text x="1020" y="430" class="section-title">LLM-assisted fallback</text>
+    <text x="1020" y="465" class="small">Runs only for manual_review or low-confidence items.</text>
+
+    <rect x="1020" y="490" rx="14" ry="14" width="280" height="56" fill="#1f2937"/>
+    <text x="1040" y="523" class="small">Input: normalized title, description,</text>
+    <text x="1040" y="542" class="small">parsed recommendation, benchmark family</text>
+
+    <rect x="1020" y="565" rx="14" ry="14" width="280" height="70" fill="#1f2937"/>
+    <text x="1040" y="598" class="small">Output: structured JSON suggestion</text>
+    <text x="1040" y="617" class="small">for review and later promotion to rules</text>
+  </g>
+
+  <!-- Connectors from rule engine -->
+  <path d="M1220 320 C1220 360, 790 340, 790 390" fill="none" stroke="#93c5fd" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1220 320 C1220 360, 1160 340, 1160 390" fill="none" stroke="#93c5fd" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Footer -->
+  <text x="70" y="720" class="subtitle">Deterministic mappings remain the source of truth. LLM suggestions accelerate rule authoring but are never applied blindly.</text>
+</svg>
