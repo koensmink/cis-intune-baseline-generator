@@ -3,6 +3,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Docker](https://img.shields.io/badge/docker-supported-blue.svg)
+![Podman](https://img.shields.io/badge/podman-supported-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 Convert **CIS Benchmark PDFs** into structured datasets and detect **changes between benchmark versions**.
@@ -98,6 +99,12 @@ python -m cis_pdf2csv --help
 docker build --no-cache -t cis-pdf2csv .
 ```
 
+## Podman
+
+```bash
+podman build --no-cache -t cis-pdf2csv .
+```
+
 ---
 
 # 🚀 Usage
@@ -108,10 +115,18 @@ docker build --no-cache -t cis-pdf2csv .
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
 ```
 
+```bash
+podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
+```
+
 ## Export JSONL
 
 ```bash
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark.pdf -p L1 -o out.jsonl --format jsonl
+```
+
+```bash
+podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./benchmark.pdf -p L1 -o out.jsonl --format jsonl
 ```
 
 ---
@@ -124,10 +139,18 @@ Export baseline 1:
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark_v1.pdf -p L1 -o v1.jsonl --format jsonl
 ```
 
+```bash
+podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./benchmark_v1.pdf -p L1 -o v1.jsonl --format jsonl
+```
+
 Export baseline 2:
 
 ```bash
 docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark_v2.pdf -p L1 -o v2.jsonl --format jsonl
+```
+
+```bash
+podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./benchmark_v2.pdf -p L1 -o v2.jsonl --format jsonl
 ```
 
 Run diff:
@@ -135,6 +158,12 @@ Run diff:
 ```bash
 docker run --rm -v "$PWD:/work" -w /work --entrypoint python cis-pdf2csv -m cis_pdf2csv.diff v1.jsonl v2.jsonl -o changes.csv --report report.md --full-report report_full.md
 ```
+
+```bash
+podman run --rm -v "$PWD:/work:Z" -w /work --entrypoint python cis-pdf2csv -m cis_pdf2csv.diff v1.jsonl v2.jsonl -o changes.csv --report report.md --full-report report_full.md
+```
+
+> Note: `:Z` on Podman volume mounts is recommended on SELinux-enabled hosts.
 
 Example output:
 
