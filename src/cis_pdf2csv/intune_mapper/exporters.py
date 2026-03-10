@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-from .models import IntuneMapping, MappingConflict
+from .models import IntuneMapping, MappingConflict, SuggestedMapping
 
 
 def write_baseline_csv(mappings: Iterable[IntuneMapping], out_path: Path) -> None:
@@ -19,6 +19,8 @@ def write_baseline_csv(mappings: Iterable[IntuneMapping], out_path: Path) -> Non
         "value",
         "confidence",
         "rule_id",
+        "parsed_value_type",
+        "quality_flags",
         "notes",
     ]
 
@@ -26,7 +28,9 @@ def write_baseline_csv(mappings: Iterable[IntuneMapping], out_path: Path) -> Non
         writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         writer.writeheader()
         for row in rows:
-            writer.writerow(row.model_dump())
+            data = row.model_dump()
+            data["quality_flags"] = ";".join(data["quality_flags"])
+            writer.writerow(data)
 
 
 def write_manual_review_csv(mappings: Iterable[IntuneMapping], out_path: Path) -> None:
@@ -69,6 +73,8 @@ def write_intune_policies_json(mappings: Iterable[IntuneMapping], out_path: Path
                 "value": mapping.value,
                 "confidence": mapping.confidence,
                 "rule_id": mapping.rule_id,
+                "parsed_value_type": mapping.parsed_value_type,
+                "quality_flags": mapping.quality_flags,
             }
         )
 
@@ -83,3 +89,9 @@ def write_intune_policies_json(mappings: Iterable[IntuneMapping], out_path: Path
     }
 
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def write_suggested_mappings_jsonl(suggestions: Iterable[SuggestedMapping], out_path: Path) -> None:
+    with out_path.open("w", encoding="utf-8") as f:
+        for suggestion in suggestions:
+            f.write(json.dumps(suggestion.model_dump(), ensure_ascii=False) + "\n")
