@@ -13,6 +13,7 @@ from .exporters import (
     write_conflicts_csv,
     write_intune_policies_json,
     write_manual_review_csv,
+    write_suggested_mappings_jsonl,
 )
 from .models import MappingInputControl
 from .resolver import resolve_controls
@@ -51,10 +52,12 @@ def main(argv: List[str] | None = None) -> int:
 
     mappings = result.mappings
     conflicts = result.conflicts
+    suggestions = result.suggestions
 
     write_baseline_csv(mappings, output_dir / "baseline.csv")
     write_intune_policies_json(mappings, output_dir / "intune_policies.json")
     write_manual_review_csv(mappings, output_dir / "manual_review.csv")
+    write_suggested_mappings_jsonl(suggestions, output_dir / "suggested_mappings.jsonl")
     write_conflicts_csv(conflicts, output_dir / "conflicts.csv")
 
     manual_count = len([m for m in mappings if m.implementation_type == "manual_review"])
@@ -64,11 +67,13 @@ def main(argv: List[str] | None = None) -> int:
     table.add_column("Mapped", justify="right")
     table.add_column("Manual review", justify="right")
     table.add_column("Conflicts", justify="right")
+    table.add_column("Suggestions", justify="right")
     table.add_row(
         str(len(controls)),
         str(len(mappings) - manual_count),
         str(manual_count),
         str(len(conflicts)),
+        str(len(suggestions)),
     )
     console.print(table)
 
