@@ -1,292 +1,298 @@
 
 # cis-pdf2csv
+### CIS Benchmark Parser & Intune Baseline Generator
 
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
-![Docker](https://img.shields.io/badge/docker-supported-blue.svg)
-![Podman](https://img.shields.io/badge/podman-supported-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-active-success)
+![Platform](https://img.shields.io/badge/platform-Windows%20Server%202025-lightgrey)
 
-Convert **CIS Benchmark PDFs** into structured datasets and detect **changes between benchmark versions**.
+Convert **CIS Benchmark PDFs** into structured data and generate **Microsoft Intune baseline configurations**.
 
-`cis-pdf2csv` parses CIS Benchmark documents (primarily **Windows Server benchmarks**) and exports every control into machine‑readable formats such as **CSV** and **JSONL**.  
-It also includes a **diff engine** that compares benchmark versions and generates detailed reports.
+The project provides a hybrid architecture combining:
 
-Designed for **security engineers, auditors, and governance teams** who need reproducible benchmark analysis.
+- deterministic security mapping logic
+- structured CIS parsing
+- rule‑based Intune policy generation
+- optional LLM‑assisted mapping suggestions
 
----
-
-# ✨ Features
-
-- Parse **CIS Windows Server Benchmark PDFs**
-- Extract full control metadata:
-  - description
-  - rationale
-  - impact
-  - audit procedure
-  - remediation procedure
-  - default value
-  - references
-- Filter controls by profile (`L1`, `L2`, `NG`)
-- Export formats:
-  - **CSV** (Excel friendly)
-  - **JSONL** (automation friendly)
-- **Diff benchmark versions**
-- Generate reports:
-  - `changes.csv`
-  - `report.md`
-  - `report_full.md`
-- Evidence-grade extraction with:
-  - page references
-  - SHA256 integrity hashes
-- Hardened Docker runtime
+This enables automated transformation of **CIS hardening benchmarks → Intune baseline artifacts**.
 
 ---
 
-# 🧠 Pipeline
+# Key Features
+
+### CIS Benchmark Parsing
+Extract structured controls from CIS benchmark PDFs.
+
+Fields extracted:
+
+- control_id
+- title
+- description
+- audit instructions
+- remediation steps
+- default values
+- benchmark metadata
+- page references
+
+Output format:
+
+```
+JSONL (one control per line)
+```
+
+---
+
+### Deterministic Intune Baseline Generation
+
+A rule‑based mapping engine converts CIS controls into **Intune configuration recommendations**.
+
+The mapping engine contains:
+
+- value normalization
+- CIS recommendation parsing
+- rule packs per control family
+- deterministic policy resolution
+
+---
+
+### LLM Assisted Mapping
+
+Controls that cannot be mapped deterministically are optionally sent to an **LLM fallback engine**.
+
+The model proposes structured mappings which can later be reviewed and promoted to permanent rules.
+
+LLM output example:
+
+```json
+{
+  "implementation_type": "settings_catalog",
+  "intune_area": "Local Policies/Security Options",
+  "setting_name": "Interactive logon: Do not display last signed-in",
+  "value_kind": "boolean",
+  "value": true,
+  "confidence": 0.83
+}
+```
+
+The LLM assists rule development but **never replaces deterministic mappings**.
+
+---
+
+# Architecture
 
 ```
 CIS Benchmark PDF
         │
         ▼
-     parser.py
+   CIS Parser
         │
         ▼
-   CSV / JSONL export
+  JSONL Controls
         │
         ▼
-      diff.py
+     Normalizer
         │
         ▼
-changes.csv / report.md / report_full.md
+   Value Parser
+        │
+        ▼
+   Rule Engine
+        │
+        ├── mapped controls
+        │
+        └── manual review
+                │
+                ▼
+         LLM Suggestion Engine
+                │
+                ▼
+      suggested_mappings.jsonl
 ```
 
 ---
 
-# 📦 Project structure
+# Repository Structure
 
 ```
-cis-pdf2csv
-├─ src/
-│  └─ cis_pdf2csv/
-│     ├─ __main__.py
-│     ├─ cli.py
-│     ├─ parser.py
-│     ├─ diff.py
-│     └─ schema.py
-├─ Dockerfile
-├─ requirements.txt
-├─ pyproject.toml
-├─ README.md
-└─ SECURITY.md
+src/
+ └─ cis_pdf2csv/
+      ├─ parser.py
+      ├─ cli.py
+      └─ intune_mapper/
+           ├─ cli.py
+           ├─ resolver.py
+           ├─ normalizer.py
+           ├─ value_parser.py
+           ├─ exporters.py
+           ├─ llm_fallback.py
+           └─ rules/
+                └─ windows_server/
+                     ├─ account_policies.py
+                     ├─ audit_policy.py
+                     ├─ security_options.py
+                     ├─ defender.py
+                     ├─ firewall.py
+                     ├─ credential_protection.py
+                     ├─ event_log.py
+                     └─ remote_access.py
 ```
 
 ---
 
-# ⚙️ Installation
+# Supported CIS Benchmarks
 
-## Local (Python) 
+Currently implemented:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
+- Windows Server 2025
+
+Architecture prepared for:
+
+- Windows Server 2016
+- Windows Server 2019
+- Windows Server 2022
+- Windows 10 / 11
+- Apple macOS
+
+---
+
+# Installation
+
+Clone repository
+
+```
+git clone https://github.com/koensmink/cis-pdf2csv.git
+cd cis-pdf2csv
+```
+
+Install dependencies
+
+```
 pip install -e .
-python -m cis_pdf2csv --help
-```
-
-## Docker
-
-```bash
-docker build --no-cache -t cis-pdf2csv .
-```
-
-## Podman
-
-```bash
-podman build --no-cache -t cis-pdf2csv .
 ```
 
 ---
 
-# 🚀 Usage
+# Usage
 
-## Parse CIS benchmark
+## Parse CIS Benchmark
 
-```bash
-docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
+```
+python -m cis_pdf2csv.cli benchmark.pdf -o controls.jsonl
 ```
 
-```bash
-podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv >>CIS_Microsoft_Windows_Server_2025_Benchmark_v2.0.0.pdf -p L1 -o out_l1.csv
+Output:
+
 ```
-
-## Export JSONL
-
-```bash
-docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark.pdf -p L1 -o out.jsonl --format jsonl
-```
-
-```bash
-podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./benchmark.pdf -p L1 -o out.jsonl --format jsonl
+controls.jsonl
 ```
 
 ---
 
-# 🔍 Diff benchmark versions
-
-Export baseline 1:
-
-```bash
-docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark_v1.pdf -p L1 -o v1.jsonl --format jsonl
-```
-
-```bash
-podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./benchmark_v1.pdf -p L1 -o v1.jsonl --format jsonl
-```
-
-Export baseline 2:
-
-```bash
-docker run --rm -v "$PWD:/work" -w /work cis-pdf2csv ./benchmark_v2.pdf -p L1 -o v2.jsonl --format jsonl
-```
-
-```bash
-podman run --rm -v "$PWD:/work:Z" -w /work cis-pdf2csv ./benchmark_v2.pdf -p L1 -o v2.jsonl --format jsonl
-```
-
-Run diff:
-
-```bash
-docker run --rm -v "$PWD:/work" -w /work --entrypoint python cis-pdf2csv -m cis_pdf2csv.diff v1.jsonl v2.jsonl -o changes.csv --report report.md --full-report report_full.md
-```
-
-```bash
-podman run --rm -v "$PWD:/work:Z" -w /work --entrypoint python cis-pdf2csv -m cis_pdf2csv.diff v1.jsonl v2.jsonl -o changes.csv --report report.md --full-report report_full.md
-```
-
-> Note: `:Z` on Podman volume mounts is recommended on SELinux-enabled hosts.
-
-Example output:
+## Generate Intune Baseline
 
 ```
-changes: 365
-added: 81
-removed: 76
-changed: 208
+python -m cis_pdf2csv.intune_mapper.cli controls.jsonl -o intune_out
+```
+
+Output directory:
+
+```
+intune_out/
+```
+
+Generated artifacts:
+
+| File | Description |
+|-----|-------------|
+| baseline.csv | proposed Intune baseline |
+| manual_review.csv | controls needing review |
+| intune_policies.json | structured policy data |
+| suggested_mappings.jsonl | LLM mapping suggestions |
+
+---
+
+## Enable LLM Suggestions
+
+```
+python -m cis_pdf2csv.intune_mapper.cli controls.jsonl -o intune_out --llm-fallback
+```
+
+Environment variable required:
+
+```
+OPENAI_API_KEY=your_api_key
 ```
 
 ---
 
-# 📊 Reports
+# Example Workflow
 
-## changes.csv
-
-Machine readable overview of all changes.
-
-## report.md
-
-Summary including:
-
-- total changes
-- added controls
-- removed controls
-- changed controls
-- most frequently changed fields
-
-## report_full.md
-
-Full audit report including:
-
-- old vs new benchmark version
-- changed fields per control
-- complete value comparison
+```
+1. Download CIS Benchmark PDF
+2. Parse PDF → JSONL dataset
+3. Run Intune mapper
+4. Review manual_review.csv
+5. Review suggested_mappings.jsonl
+6. Promote accepted suggestions to rule packs
+```
 
 ---
 
-# 📄 Output schema
+# Design Principles
 
-| Field | Description |
-|------|-------------|
-benchmark_name | CIS benchmark name |
-benchmark_version | Benchmark version |
-benchmark_date | Publication date |
-control_id | CIS control ID |
-profile | L1 / L2 / NG |
-title | Control title |
-assessment | Automated / Manual |
-description | Description |
-rationale | Rationale |
-impact | Impact |
-audit | Audit procedure |
-remediation | Remediation |
-default_value | Default value |
-references | References |
-page_start | Control start page |
-page_end | Control end page |
-source_pdf_sha256 | Source PDF hash |
-block_text_sha256 | Control block hash |
-parser_version | Parser version |
-extracted_at_utc | Extraction timestamp |
+### Deterministic First
+
+Baseline generation must be reproducible.
+
+Rule packs remain the primary mapping method.
+
+### AI Assisted Engineering
+
+LLM suggestions accelerate rule creation but do not replace deterministic logic.
+
+### Reviewable Output
+
+All mappings are exported as structured artifacts that can be reviewed and audited.
 
 ---
 
-# 🧩 Parser behaviour
+# Development Roadmap
 
-The parser:
+Planned improvements:
 
-1. Detects where the **actual benchmark body starts**
-2. Skips the **table of contents**
-3. Identifies control headers
-4. Splits sections based on CIS headings
-
-Supported headings:
-
-- Description
-- Rationale / Rationale Statement
-- Impact / Impact Statement
-- Audit / Audit Procedure
-- Remediation / Remediation Procedure
-- Default Value
-- References
+- Windows Server shared rule packs (2016‑2025)
+- macOS CIS mapping
+- Windows 11 workstation baseline
+- Intune Settings Catalog metadata integration
+- Microsoft Graph API policy deployment
+- Policy template generation
+- Coverage metrics per benchmark
 
 ---
 
-# 📈 CSV vs JSONL
+# Contributing
 
-| Format | Use case |
-|------|------|
-JSONL | automation / diffing |
-CSV | Excel / reporting |
+Contributions are welcome.
 
-CSV is written using **UTF‑8 BOM** to improve compatibility with **Excel on Windows**.
+Recommended workflow:
 
----
-
-# 🔐 Security
-
-The container is designed for processing **potentially untrusted PDFs**.
-
-Security measures:
-
-- non‑root container user
-- read‑only filesystem support
-- `no-new-privileges`
-- `cap-drop ALL`
-- block hashing for integrity verification
-
-See **SECURITY.md** for the STRIDE threat model.
+1. Identify unmapped controls in `manual_review.csv`
+2. Review `suggested_mappings.jsonl`
+3. Promote mappings to rule packs
+4. Add tests
+5. Submit PR
 
 ---
 
-# ⚠️ Limitations
+# License
 
-- Optimized for **Windows Server CIS benchmarks**
-- Layout changes in CIS PDFs may require parser adjustments
-- Control renumbering between versions may appear as added/removed
+MIT License
 
 ---
 
-# 📜 License
+# Author
 
-MIT (code only).
-
-CIS benchmark content is **not included** and remains subject to CIS Terms of Use.
+Koen Smink  
+Security Engineering / Automation
