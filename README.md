@@ -296,21 +296,21 @@ podman run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work:Z" -w /work c
 ---
 
 # 🔍 Diff benchmark versions
-
-Python PDF → JSONL
-
+Parse benchmark
 ```bash
-python -m cis_pdf2csv.diff v1.jsonl v2.jsonl -o changes.csv --report report.md --full-report report_full.md
+python -m cis_pdf2csv.parse <pdf> -o <file.jsonl>
 ```
 
-Python Diff uitvoeren
-
-```  bash
-python -m cis_pdf2csv.diff v1.jsonl v2.jsonl \
--o changes.csv \
---report report.md \
---full-report report_full.md
+Diff benchmarks
+```bash
+python -m cis_pdf2csv.diff <old.jsonl> <new.jsonl>
 ```
+
+Intune mapping
+```bash
+python -m cis_pdf2csv.intune <jsonl>
+```
+
 Export baseline 1:
 
 ```bash
