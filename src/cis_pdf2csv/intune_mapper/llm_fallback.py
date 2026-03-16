@@ -5,8 +5,6 @@ import json
 from pathlib import Path
 from typing import Protocol
 
-from openai import OpenAI
-
 from .models import IntuneMapping, SuggestedMapping
 
 
@@ -35,6 +33,7 @@ class HeuristicLLMClient:
 class OpenAILLMClient:
     """
     OpenAI-backed fallback mapper with:
+    - lazy import of openai
     - batch suggestion support
     - simple file cache
     """
@@ -45,6 +44,14 @@ class OpenAILLMClient:
         model: str = "gpt-4.1-mini",
         cache_path: str | Path | None = None,
     ) -> None:
+        try:
+            from openai import OpenAI
+        except ImportError as e:
+            raise RuntimeError(
+                "The 'openai' package is not installed. "
+                "Install it first or rebuild the container with the updated dependencies."
+            ) from e
+
         self.client = OpenAI(api_key=api_key)
         self.model = model
         self.cache_path = Path(cache_path) if cache_path else None
@@ -87,6 +94,9 @@ class OpenAILLMClient:
         return self.suggest_mappings_batch([mapping])[0]
 
     def suggest_mappings_batch(self, mappings: list[IntuneMapping]) -> list[dict]:
+        if not mappings:
+            return []
+
         uncached: list[IntuneMapping] = []
         results: list[dict | None] = [None] * len(mappings)
 
@@ -100,11 +110,11 @@ class OpenAILLMClient:
 
         if uncached:
             generated = self._call_openai_batch(uncached)
-            uncached_iter = iter(generated)
+            generated_iter = iter(generated)
 
             for idx, mapping in enumerate(mappings):
                 if results[idx] is None:
-                    value = next(uncached_iter)
+                    value = next(generated_iter)
                     key = self._cache_key(mapping)
                     self._cache[key] = value
                     results[idx] = value
@@ -116,12 +126,13 @@ class OpenAILLMClient:
     def _call_openai_batch(self, mappings: list[IntuneMapping]) -> list[dict]:
         system_prompt = (
             "You map CIS security controls to Microsoft Intune implementation candidates. "
-            "Return only valid JSON as an array. "
+            "Return only valid JSON as an object with a top-level key named 'suggestions'. "
+            "The value of 'suggestions' must be an array. "
             "Each array item must contain: "
             "cis_id, suggested_implementation_type, suggested_intune_area, "
             "suggested_setting_name, suggested_value, confidence, reasoning. "
             "Confidence must be a float between 0.0 and 1.0. "
-            "Be conservative. If uncertain, set intune_area to 'Manual Triage'."
+            "Be conservative. If uncertain, set suggested_intune_area to 'Manual Triage'."
         )
 
         payload = []
@@ -191,7 +202,6 @@ class OpenAILLMClient:
                 }
             )
 
-        # Safety fallback if model returns fewer items than expected
         while len(normalized) < len(mappings):
             original = mappings[len(normalized)]
             normalized.append(
