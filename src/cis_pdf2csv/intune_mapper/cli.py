@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 from pathlib import Path
 from typing import List
@@ -34,13 +35,43 @@ def _load_controls_jsonl(path: Path) -> List[MappingInputControl]:
     return controls
 
 
+def _resolve_with_optional_llm_fallback(
+    controls: List[MappingInputControl],
+    llm_fallback: bool,
+):
+    """
+    Call resolve_controls() and only pass llm_fallback if the resolver
+    actually supports that parameter. This keeps the CLI backward-compatible.
+    """
+    sig = inspect.signature(resolve_controls)
+
+    if "llm_fallback" in sig.parameters:
+        return resolve_controls(controls, llm_fallback=llm_fallback)
+
+    return resolve_controls(controls)
+
+
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="cis-intune-map",
         description="Map parsed CIS controls to Intune baseline artifacts",
     )
-    parser.add_argument("input", help="Input controls JSONL exported by cis-pdf2csv")
-    parser.add_argument("-o", "--output-dir", required=True, help="Output directory")
+    parser.add_argument(
+        "input",
+        help="Input controls JSONL exported by cis-pdf2csv",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        required=True,
+        help="Output directory",
+    )
+    parser.add_argument(
+        "--llm-fallback",
+        action="store_true",
+        help="Use LLM fallback for controls that cannot be mapped deterministically",
+    )
+
     args = parser.parse_args(argv)
 
     input_path = Path(args.input)
@@ -48,7 +79,10 @@ def main(argv: List[str] | None = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     controls = _load_controls_jsonl(input_path)
-    result = resolve_controls(controls)
+    result = _resolve_with_optional_llm_fallback(
+        controls=controls,
+        llm_fallback=args.llm_fallback,
+    )
 
     mappings = result.mappings
     conflicts = result.conflicts
@@ -76,6 +110,9 @@ def main(argv: List[str] | None = None) -> int:
         str(len(suggestions)),
     )
     console.print(table)
+
+    if args.llm_fallback:
+        console.print("[cyan]LLM fallback requested[/cyan]")
 
     return 0
 
