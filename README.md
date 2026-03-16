@@ -163,7 +163,7 @@ CIS Benchmark PDF
 
 ```
 src/
- └─ cis_pdf2csv/
+ └─ cis-intune-baseline-generator/
       ├─ parser.py
       ├─ cli.py
       └─ intune_mapper/
@@ -208,8 +208,8 @@ Architecture prepared for:
 Clone repository
 
 ```
-git clone https://github.com/koensmink/cis-pdf2csv.git
-cd cis-pdf2csv
+git clone https://github.com/koensmink/cis-intune-baseline-generator.git
+cd cis-intune-baseline-generator
 ```
 
 Install dependencies
