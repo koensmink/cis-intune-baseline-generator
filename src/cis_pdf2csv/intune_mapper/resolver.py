@@ -97,7 +97,6 @@ def resolve_controls(
         if conflict:
             conflicts.append(conflict)
 
-    # Only send manual review items into the LLM suggestion pipeline
     manual_review_mappings = [
         m for m in mappings if m.implementation_type == "manual_review"
     ]
