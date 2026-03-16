@@ -3,7 +3,13 @@ from __future__ import annotations
 from typing import Iterable, List
 
 from .llm_fallback import LLMClient, suggest_manual_review_mappings
-from .models import IntuneMapping, MappingConflict, MappingInputControl, NormalizedControl, ResolverResult
+from .models import (
+    IntuneMapping,
+    MappingConflict,
+    MappingInputControl,
+    NormalizedControl,
+    ResolverResult,
+)
 from .normalizer import normalize_control
 from .rules import MappingRule, STARTER_RULES
 
@@ -91,5 +97,18 @@ def resolve_controls(
         if conflict:
             conflicts.append(conflict)
 
-    suggestions = suggest_manual_review_mappings(mappings, client=llm_client)
-    return ResolverResult(mappings=mappings, conflicts=conflicts, suggestions=suggestions)
+    # Only send manual review items into the LLM suggestion pipeline
+    manual_review_mappings = [
+        m for m in mappings if m.implementation_type == "manual_review"
+    ]
+
+    suggestions = suggest_manual_review_mappings(
+        manual_review_mappings,
+        client=llm_client,
+    )
+
+    return ResolverResult(
+        mappings=mappings,
+        conflicts=conflicts,
+        suggestions=suggestions,
+    )
