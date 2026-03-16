@@ -278,19 +278,19 @@ podman build -t cis-pdf2csv .
 Run parser:
 
 ```
-podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv python -m cis_pdf2csv.cli benchmark.pdf -o controls.jsonl
+podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv benchmark.pdf -o controls.jsonl
 ```
 
 Run mapper:
 
 ```
-podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv python -m cis_pdf2csv.intune_mapper.cli controls.jsonl -o intune_out
+podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intune_out
 ```
 
 Enable LLM suggestions:
 
 ```
-podman run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work:Z" -w /work cis-pdf2csv python -m cis_pdf2csv.intune_mapper.cli controls.jsonl -o intune_out --llm-fallback
+podman run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intune_out --llm-fallback
 ```
 
 ---
