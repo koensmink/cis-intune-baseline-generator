@@ -1,4 +1,4 @@
-### CIS Benchmark Parser & Intune Baseline Generator
+ƒ### CIS Benchmark Parser & Intune Baseline Generator
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -259,37 +259,59 @@ Generated artifacts:
 
 ---
 
-# Container Usage
-
 Build container:
 
 Docker
 
-```
+``` bash
 docker build -t cis-pdf2csv .
 ```
 
 Podman
 
-```
+``` bash
 podman build -t cis-pdf2csv .
 ```
 
 Run parser:
 
+Docker
+
+``` bash
+docker run --rm -v "${PWD}:/work" -w /work cis-pdf2csv benchmark.pdf -o controls.jsonl
 ```
+
+Podman
+
+``` bash
 podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv benchmark.pdf -o controls.jsonl
 ```
 
 Run mapper:
 
+Docker
+
+``` bash
+docker run --rm -v "${PWD}:/work" -w /work cis-pdf2csv controls.jsonl -o intune_out
 ```
+
+Podman
+
+``` bash
 podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intune_out
 ```
 
 Enable LLM suggestions:
 
+Docker
+
+``` bash
+docker run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work" -w /work cis-pdf2csv controls.jsonl -o intune_out --llm-fallback
 ```
+
+Podman
+
+``` bash
 podman run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intune_out --llm-fallback
 ```
 
