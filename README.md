@@ -4,6 +4,10 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-success)
 ![Platform](https://img.shields.io/badge/platform-Windows%20Server%202025-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Windows%20Server%202022-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Windows%20Server%202019-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Windows%20Server%202016-lightgrey)
+![Platform](https://img.shields.io/badge/platform-MAC%20OS%2026-lightgrey)
 
 
 Convert **CIS Benchmark PDFs** into structured data and generate **Microsoft Intune baseline configurations**.
