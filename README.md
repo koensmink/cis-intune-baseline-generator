@@ -1,6 +1,6 @@
 ### CIS Benchmark Parser & Intune Baseline Generator
 
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Python](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-success)
 ![Platform](https://img.shields.io/badge/platform-Windows%20Server%202025-lightgrey)
