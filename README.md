@@ -221,19 +221,23 @@ pip install -e .
 ---
 
 # Usage
+# 📈 CSV vs JSONL
 
-## Parse CIS Benchmark
+| Format | Use case |
+|------|------|
+JSONL | automation / diffing |
+CSV | Excel / reporting |
 
+CSV is written using **UTF‑8 BOM** to improve compatibility with **Excel on Windows**.
+
+Export jsonl
 ```
 python -m cis_pdf2csv.cli benchmark.pdf -o controls.jsonl
 ```
-
-Output:
-
+Export csv
 ```
-controls.jsonl
+python -m cis_pdf2csv.cli benchmark.pdf -o controls.csv
 ```
-
 ---
 
 ## Generate Intune Baseline
@@ -261,13 +265,11 @@ Generated artifacts:
 
 Build container:
 
-Docker
 
 ``` bash
 docker build -t cis-pdf2csv .
 ```
 
-Podman
 
 ``` bash
 podman build -t cis-pdf2csv .
@@ -275,13 +277,11 @@ podman build -t cis-pdf2csv .
 
 Run parser:
 
-Docker
 
 ``` bash
 docker run --rm -v "${PWD}:/work" -w /work cis-pdf2csv benchmark.pdf -o controls.jsonl
 ```
 
-Podman
 
 ``` bash
 podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv benchmark.pdf -o controls.jsonl
@@ -289,13 +289,11 @@ podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv benchmark.pdf -o contro
 
 Run mapper:
 
-Docker
 
 ``` bash
 docker run --rm -v "${PWD}:/work" -w /work cis-pdf2csv controls.jsonl -o intune_out
 ```
 
-Podman
 
 ``` bash
 podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intune_out
@@ -303,13 +301,9 @@ podman run --rm -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intun
 
 Enable LLM suggestions:
 
-Docker
-
 ``` bash
 docker run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work" -w /work cis-pdf2csv controls.jsonl -o intune_out --llm-fallback
 ```
-
-Podman
 
 ``` bash
 podman run --rm -e OPENAI_API_KEY=$OPENAI_API_KEY -v "${PWD}:/work:Z" -w /work cis-pdf2csv controls.jsonl -o intune_out --llm-fallback
@@ -398,24 +392,6 @@ OPENAI_API_KEY=your_api_key
 5. Review suggested_mappings.jsonl
 6. Promote accepted suggestions to rule packs
 ```
-
----
-
-# Design Principles
-
-### Deterministic First
-
-Baseline generation must be reproducible.
-
-Rule packs remain the primary mapping method.
-
-### AI Assisted Engineering
-
-LLM suggestions accelerate rule creation but do not replace deterministic logic.
-
-### Reviewable Output
-
-All mappings are exported as structured artifacts that can be reviewed and audited.
 
 ---
 
