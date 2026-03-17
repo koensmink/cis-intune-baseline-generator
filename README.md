@@ -415,4 +415,6 @@ Planned improvements:
 
 # License
 
-MIT License
+MIT License for code
+
+CIS benchmark content is **not included** and remains subject to CIS Terms of Use.
