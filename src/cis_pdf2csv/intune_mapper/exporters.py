@@ -3,9 +3,20 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from .models import IntuneMapping, MappingConflict, SuggestedMapping
+
+
+def _to_dict(row: Any) -> dict:
+    """
+    Support both Pydantic models and plain dict rows.
+    """
+    if hasattr(row, "model_dump"):
+        return row.model_dump()
+    if isinstance(row, dict):
+        return row
+    raise TypeError(f"Unsupported row type for export: {type(row)!r}")
 
 
 def write_baseline_csv(mappings: Iterable[IntuneMapping], out_path: Path) -> None:
@@ -28,8 +39,9 @@ def write_baseline_csv(mappings: Iterable[IntuneMapping], out_path: Path) -> Non
         writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         writer.writeheader()
         for row in rows:
-            data = row.model_dump()
-            data["quality_flags"] = ";".join(data["quality_flags"])
+            data = _to_dict(row)
+            if isinstance(data.get("quality_flags"), list):
+                data["quality_flags"] = ";".join(str(x) for x in data["quality_flags"])
             writer.writerow(data)
 
 
@@ -53,9 +65,13 @@ def write_conflicts_csv(conflicts: Iterable[MappingConflict], out_path: Path) ->
         writer = csv.DictWriter(f, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         writer.writeheader()
         for row in rows:
-            data = row.model_dump()
-            data["matched_rule_ids"] = ";".join(data["matched_rule_ids"])
-            data["matched_implementation_types"] = ";".join(data["matched_implementation_types"])
+            data = _to_dict(row)
+            if isinstance(data.get("matched_rule_ids"), list):
+                data["matched_rule_ids"] = ";".join(str(x) for x in data["matched_rule_ids"])
+            if isinstance(data.get("matched_implementation_types"), list):
+                data["matched_implementation_types"] = ";".join(
+                    str(x) for x in data["matched_implementation_types"]
+                )
             writer.writerow(data)
 
 
@@ -91,7 +107,11 @@ def write_intune_policies_json(mappings: Iterable[IntuneMapping], out_path: Path
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def write_suggested_mappings_jsonl(suggestions: Iterable[SuggestedMapping], out_path: Path) -> None:
+def write_suggested_mappings_jsonl(
+    suggestions: Iterable[SuggestedMapping | dict],
+    out_path: Path,
+) -> None:
     with out_path.open("w", encoding="utf-8") as f:
         for suggestion in suggestions:
-            f.write(json.dumps(suggestion.model_dump(), ensure_ascii=False) + "\n")
+            payload = _to_dict(suggestion)
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
