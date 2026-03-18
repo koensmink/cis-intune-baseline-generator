@@ -20,7 +20,7 @@ class HeuristicLLMClient:
             "suggested_implementation_type": "settings_catalog",
             "suggested_intune_area": "Manual Triage",
             "suggested_setting_name": f"Review {mapping.title}",
-            "suggested_value": mapping.value,
+            "suggested_value": str(mapping.value) if mapping.value is not None else "",
             "confidence": 0.35,
             "reasoning": "Heuristic fallback generated because no external LLM client was provided.",
         }
@@ -101,6 +101,24 @@ class OpenAILLMClient:
 
         return 0.5
 
+    def _normalize_suggested_value(self, value, fallback_value) -> str:
+        """
+        Normalize suggested_value to a string because SuggestedMapping expects str.
+        """
+        if value is None:
+            return str(fallback_value) if fallback_value is not None else ""
+
+        if isinstance(value, bool):
+            return "Enabled" if value else "Disabled"
+
+        if isinstance(value, (int, float)):
+            return str(value)
+
+        if isinstance(value, str):
+            return value.strip()
+
+        return str(value)
+
     def suggest_mapping(self, mapping: IntuneMapping) -> dict:
         return self.suggest_mappings_batch([mapping])[0]
 
@@ -135,7 +153,9 @@ class OpenAILLMClient:
             try:
                 return self._call_openai_batch(mappings)
             except Exception as e:
-                print(f"[LLM retry {attempt}] {e}")
+                import traceback
+                print(f"[LLM retry {attempt}] {type(e).__name__}: {e}")
+                traceback.print_exc()
                 time.sleep(1)
 
         return [self._fallback(m) for m in mappings]
@@ -147,14 +167,15 @@ class OpenAILLMClient:
             "{ 'suggestions': [ { cis_id, suggested_implementation_type, "
             "suggested_intune_area, suggested_setting_name, suggested_value, confidence, reasoning } ] }\n"
             "'confidence' must be a numeric value between 0.0 and 1.0. "
-            "Do not use strings like High, Medium, or Low."
+            "Do not use strings like High, Medium, or Low. "
+            "'suggested_value' must always be a string."
         )
 
         payload = [
             {
                 "cis_id": m.cis_id,
                 "title": m.title,
-                "value": m.value,
+                "value": str(m.value) if m.value is not None else "",
             }
             for m in mappings
         ]
@@ -200,7 +221,10 @@ class OpenAILLMClient:
                     "suggested_setting_name": item.get(
                         "suggested_setting_name", f"Review {original.title}"
                     ),
-                    "suggested_value": item.get("suggested_value", original.value),
+                    "suggested_value": self._normalize_suggested_value(
+                        item.get("suggested_value", original.value),
+                        original.value,
+                    ),
                     "confidence": self._normalize_confidence(item.get("confidence", 0.5)),
                     "reasoning": item.get("reasoning", "LLM generated"),
                 }
@@ -219,7 +243,7 @@ class OpenAILLMClient:
             "suggested_implementation_type": "settings_catalog",
             "suggested_intune_area": "Manual Triage",
             "suggested_setting_name": f"Review {m.title}",
-            "suggested_value": m.value,
+            "suggested_value": self._normalize_suggested_value(m.value, m.value),
             "confidence": 0.35,
             "reasoning": "Fallback due to incomplete LLM response",
         }
