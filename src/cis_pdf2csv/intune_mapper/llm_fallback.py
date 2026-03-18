@@ -66,6 +66,41 @@ class OpenAILLMClient:
                 encoding="utf-8",
             )
 
+    def _normalize_confidence(self, value) -> float:
+        """
+        Normalize LLM confidence values to a float between 0.0 and 1.0.
+        Accepts floats, ints, numeric strings, and labels like high/medium/low.
+        """
+        if value is None:
+            return 0.5
+
+        if isinstance(value, (int, float)):
+            v = float(value)
+            return max(0.0, min(1.0, v))
+
+        if isinstance(value, str):
+            t = value.strip().lower()
+
+            mapping = {
+                "very high": 0.95,
+                "high": 0.85,
+                "medium": 0.60,
+                "moderate": 0.60,
+                "low": 0.35,
+                "very low": 0.15,
+            }
+
+            if t in mapping:
+                return mapping[t]
+
+            try:
+                v = float(t)
+                return max(0.0, min(1.0, v))
+            except ValueError:
+                return 0.5
+
+        return 0.5
+
     def suggest_mapping(self, mapping: IntuneMapping) -> dict:
         return self.suggest_mappings_batch([mapping])[0]
 
@@ -80,7 +115,6 @@ class OpenAILLMClient:
             else:
                 uncached.append((i, m))
 
-        # batch processing
         for i in range(0, len(uncached), self.batch_size):
             chunk = uncached[i : i + self.batch_size]
             indices = [x[0] for x in chunk]
@@ -94,7 +128,6 @@ class OpenAILLMClient:
                 results[idx] = value
 
         self._save_cache()
-
         return [r for r in results if r is not None]
 
     def _call_with_retry(self, mappings: list[IntuneMapping]) -> list[dict]:
@@ -105,7 +138,6 @@ class OpenAILLMClient:
                 print(f"[LLM retry {attempt}] {e}")
                 time.sleep(1)
 
-        # fallback if everything fails
         return [self._fallback(m) for m in mappings]
 
     def _call_openai_batch(self, mappings: list[IntuneMapping]) -> list[dict]:
@@ -113,7 +145,9 @@ class OpenAILLMClient:
             "Return ONLY valid JSON. No markdown, no explanation.\n"
             "Schema:\n"
             "{ 'suggestions': [ { cis_id, suggested_implementation_type, "
-            "suggested_intune_area, suggested_setting_name, suggested_value, confidence, reasoning } ] }"
+            "suggested_intune_area, suggested_setting_name, suggested_value, confidence, reasoning } ] }\n"
+            "'confidence' must be a numeric value between 0.0 and 1.0. "
+            "Do not use strings like High, Medium, or Low."
         )
 
         payload = [
@@ -167,17 +201,15 @@ class OpenAILLMClient:
                         "suggested_setting_name", f"Review {original.title}"
                     ),
                     "suggested_value": item.get("suggested_value", original.value),
-                    "confidence": float(item.get("confidence", 0.5)),
+                    "confidence": self._normalize_confidence(item.get("confidence", 0.5)),
                     "reasoning": item.get("reasoning", "LLM generated"),
                 }
             )
 
-        # incomplete response handling
         if len(result) != len(mappings):
             print("WARNING: LLM returned incomplete batch")
-
             missing = len(mappings) - len(result)
-            for i in range(missing):
+            for _ in range(missing):
                 result.append(self._fallback(mappings[len(result)]))
 
         return result
