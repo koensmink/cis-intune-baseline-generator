@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Protocol
 
@@ -14,8 +15,6 @@ class LLMClient(Protocol):
 
 
 class HeuristicLLMClient:
-    """Default deterministic stub for environments without an LLM provider."""
-
     def suggest_mapping(self, mapping: IntuneMapping) -> dict:
         return {
             "suggested_implementation_type": "settings_catalog",
@@ -31,31 +30,22 @@ class HeuristicLLMClient:
 
 
 class OpenAILLMClient:
-    """
-    OpenAI-backed fallback mapper with:
-    - lazy import of openai
-    - batch suggestion support
-    - simple file cache
-    """
-
     def __init__(
         self,
         api_key: str,
         model: str = "gpt-4.1-mini",
         cache_path: str | Path | None = None,
+        batch_size: int = 5,
+        max_retries: int = 2,
     ) -> None:
-        try:
-            from openai import OpenAI
-        except ImportError as e:
-            raise RuntimeError(
-                "The 'openai' package is not installed. "
-                "Install it first or rebuild the container with the updated dependencies."
-            ) from e
+        from openai import OpenAI
 
         self.client = OpenAI(api_key=api_key)
         self.model = model
         self.cache_path = Path(cache_path) if cache_path else None
         self._cache: dict[str, dict] = {}
+        self.batch_size = batch_size
+        self.max_retries = max_retries
 
         if self.cache_path:
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,27 +56,13 @@ class OpenAILLMClient:
                     self._cache = {}
 
     def _cache_key(self, mapping: IntuneMapping) -> str:
-        raw = json.dumps(
-            {
-                "cis_id": mapping.cis_id,
-                "title": mapping.title,
-                "implementation_type": mapping.implementation_type,
-                "intune_area": mapping.intune_area,
-                "setting_name": mapping.setting_name,
-                "value": mapping.value,
-                "notes": mapping.notes,
-                "parsed_value_type": mapping.parsed_value_type,
-                "quality_flags": mapping.quality_flags,
-            },
-            ensure_ascii=False,
-            sort_keys=True,
-        )
-        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        raw = json.dumps(mapping.__dict__, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(raw.encode()).hexdigest()
 
     def _save_cache(self) -> None:
         if self.cache_path:
             self.cache_path.write_text(
-                json.dumps(self._cache, ensure_ascii=False, indent=2),
+                json.dumps(self._cache, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
 
@@ -94,98 +70,92 @@ class OpenAILLMClient:
         return self.suggest_mappings_batch([mapping])[0]
 
     def suggest_mappings_batch(self, mappings: list[IntuneMapping]) -> list[dict]:
-        if not mappings:
-            return []
-
-        uncached: list[IntuneMapping] = []
         results: list[dict | None] = [None] * len(mappings)
+        uncached: list[tuple[int, IntuneMapping]] = []
 
-        for idx, mapping in enumerate(mappings):
-            key = self._cache_key(mapping)
-            cached = self._cache.get(key)
-            if cached:
-                results[idx] = cached
+        for i, m in enumerate(mappings):
+            key = self._cache_key(m)
+            if key in self._cache:
+                results[i] = self._cache[key]
             else:
-                uncached.append(mapping)
+                uncached.append((i, m))
 
-        if uncached:
-            generated = self._call_openai_batch(uncached)
-            generated_iter = iter(generated)
+        # batch processing
+        for i in range(0, len(uncached), self.batch_size):
+            chunk = uncached[i : i + self.batch_size]
+            indices = [x[0] for x in chunk]
+            controls = [x[1] for x in chunk]
 
-            for idx, mapping in enumerate(mappings):
-                if results[idx] is None:
-                    value = next(generated_iter)
-                    key = self._cache_key(mapping)
-                    self._cache[key] = value
-                    results[idx] = value
+            generated = self._call_with_retry(controls)
 
-            self._save_cache()
+            for idx, value in zip(indices, generated):
+                key = self._cache_key(mappings[idx])
+                self._cache[key] = value
+                results[idx] = value
+
+        self._save_cache()
 
         return [r for r in results if r is not None]
 
+    def _call_with_retry(self, mappings: list[IntuneMapping]) -> list[dict]:
+        for attempt in range(self.max_retries + 1):
+            try:
+                return self._call_openai_batch(mappings)
+            except Exception as e:
+                print(f"[LLM retry {attempt}] {e}")
+                time.sleep(1)
+
+        # fallback if everything fails
+        return [self._fallback(m) for m in mappings]
+
     def _call_openai_batch(self, mappings: list[IntuneMapping]) -> list[dict]:
         system_prompt = (
-            "You map CIS security controls to Microsoft Intune implementation candidates. "
-            "Return only valid JSON as an object with a top-level key named 'suggestions'. "
-            "The value of 'suggestions' must be an array. "
-            "Each array item must contain: "
-            "cis_id, suggested_implementation_type, suggested_intune_area, "
-            "suggested_setting_name, suggested_value, confidence, reasoning. "
-            "Confidence must be a float between 0.0 and 1.0. "
-            "Be conservative. If uncertain, set suggested_intune_area to 'Manual Triage'."
+            "Return ONLY valid JSON. No markdown, no explanation.\n"
+            "Schema:\n"
+            "{ 'suggestions': [ { cis_id, suggested_implementation_type, "
+            "suggested_intune_area, suggested_setting_name, suggested_value, confidence, reasoning } ] }"
         )
 
-        payload = []
-        for m in mappings:
-            payload.append(
-                {
-                    "cis_id": m.cis_id,
-                    "title": m.title,
-                    "implementation_type": m.implementation_type,
-                    "intune_area": m.intune_area,
-                    "setting_name": m.setting_name,
-                    "value": m.value,
-                    "notes": m.notes,
-                    "parsed_value_type": m.parsed_value_type,
-                    "quality_flags": m.quality_flags,
-                }
-            )
-
-        user_prompt = json.dumps(payload, ensure_ascii=False, indent=2)
+        payload = [
+            {
+                "cis_id": m.cis_id,
+                "title": m.title,
+                "value": m.value,
+            }
+            for m in mappings
+        ]
 
         response = self.client.chat.completions.create(
             model=self.model,
             temperature=0,
+            max_tokens=1500,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        "Generate mapping suggestions for these manual-review CIS controls. "
-                        "Return JSON with one top-level key: 'suggestions', "
-                        "containing an array of suggestion objects.\n\n"
-                        f"{user_prompt}"
-                    ),
-                },
+                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
             ],
         )
 
-        content = response.choices[0].message.content or "{}"
-        data = json.loads(content)
+        raw = response.choices[0].message.content or "{}"
+
+        try:
+            data = json.loads(raw)
+        except Exception:
+            print("INVALID JSON FROM LLM:")
+            print(raw)
+            return [self._fallback(m) for m in mappings]
+
         suggestions = data.get("suggestions", [])
 
-        normalized: list[dict] = []
+        result: list[dict] = []
         by_id = {m.cis_id: m for m in mappings}
 
         for item in suggestions:
-            cis_id = item.get("cis_id")
-            original = by_id.get(cis_id)
-
-            if original is None:
+            original = by_id.get(item.get("cis_id"))
+            if not original:
                 continue
 
-            normalized.append(
+            result.append(
                 {
                     "suggested_implementation_type": item.get(
                         "suggested_implementation_type", "settings_catalog"
@@ -197,25 +167,30 @@ class OpenAILLMClient:
                         "suggested_setting_name", f"Review {original.title}"
                     ),
                     "suggested_value": item.get("suggested_value", original.value),
-                    "confidence": float(item.get("confidence", 0.50)),
-                    "reasoning": item.get("reasoning", "Generated by OpenAI fallback."),
+                    "confidence": float(item.get("confidence", 0.5)),
+                    "reasoning": item.get("reasoning", "LLM generated"),
                 }
             )
 
-        while len(normalized) < len(mappings):
-            original = mappings[len(normalized)]
-            normalized.append(
-                {
-                    "suggested_implementation_type": "settings_catalog",
-                    "suggested_intune_area": "Manual Triage",
-                    "suggested_setting_name": f"Review {original.title}",
-                    "suggested_value": original.value,
-                    "confidence": 0.35,
-                    "reasoning": "OpenAI response incomplete; fallback suggestion generated.",
-                }
-            )
+        # incomplete response handling
+        if len(result) != len(mappings):
+            print("WARNING: LLM returned incomplete batch")
 
-        return normalized
+            missing = len(mappings) - len(result)
+            for i in range(missing):
+                result.append(self._fallback(mappings[len(result)]))
+
+        return result
+
+    def _fallback(self, m: IntuneMapping) -> dict:
+        return {
+            "suggested_implementation_type": "settings_catalog",
+            "suggested_intune_area": "Manual Triage",
+            "suggested_setting_name": f"Review {m.title}",
+            "suggested_value": m.value,
+            "confidence": 0.35,
+            "reasoning": "Fallback due to incomplete LLM response",
+        }
 
 
 def suggest_manual_review_mappings(
@@ -223,21 +198,18 @@ def suggest_manual_review_mappings(
     client: LLMClient | None = None,
 ) -> list[SuggestedMapping]:
     llm = client or HeuristicLLMClient()
-    manual_review = [m for m in mappings if m.implementation_type == "manual_review"]
 
+    manual_review = [m for m in mappings if m.implementation_type == "manual_review"]
     if not manual_review:
         return []
 
-    suggestion_data = llm.suggest_mappings_batch(manual_review)
-    suggestions: list[SuggestedMapping] = []
+    data = llm.suggest_mappings_batch(manual_review)
 
-    for mapping, data in zip(manual_review, suggestion_data):
-        suggestions.append(
-            SuggestedMapping(
-                cis_id=mapping.cis_id,
-                title=mapping.title,
-                **data,
-            )
+    return [
+        SuggestedMapping(
+            cis_id=m.cis_id,
+            title=m.title,
+            **d,
         )
-
-    return suggestions
+        for m, d in zip(manual_review, data)
+    ]
