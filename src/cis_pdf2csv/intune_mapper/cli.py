@@ -94,8 +94,12 @@ def main(argv: List[str] | None = None) -> int:
     conflicts = result.conflicts
     suggestions = result.suggestions
 
+    # 🔑 FIX: veilig omgaan met model vs dict
     normalized_suggestions = normalize_suggestions(
-        [s.model_dump() for s in suggestions]
+        [
+            s.model_dump() if hasattr(s, "model_dump") else s
+            for s in suggestions
+        ]
     )
 
     write_baseline_csv(mappings, output_dir / "baseline.csv")
@@ -119,6 +123,7 @@ def main(argv: List[str] | None = None) -> int:
     table.add_column("Conflicts", justify="right")
     table.add_column("Suggestions", justify="right")
     table.add_column("Needs validation", justify="right")
+
     table.add_row(
         str(len(controls)),
         str(len(mappings) - manual_count),
@@ -127,6 +132,7 @@ def main(argv: List[str] | None = None) -> int:
         str(len(normalized_suggestions)),
         str(needs_validation_count),
     )
+
     console.print(table)
 
     if args.llm_fallback:
