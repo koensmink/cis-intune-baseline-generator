@@ -87,6 +87,13 @@ def resolve_controls(
     rules: Iterable[MappingRule] = STARTER_RULES,
     llm_client: LLMClient | None = None,
 ) -> ResolverResult:
+    """
+    Resolve all controls into:
+    - deterministic mappings where possible
+    - manual_review mappings where no rule matched
+    - LLM-backed suggestions for manual_review items if llm_client is provided
+    - heuristic suggestions only when no llm_client is provided
+    """
     mappings: List[IntuneMapping] = []
     conflicts: List[MappingConflict] = []
 
@@ -97,6 +104,9 @@ def resolve_controls(
         if conflict:
             conflicts.append(conflict)
 
+    # Only manual review items go through suggestion generation.
+    # If llm_client is provided, llm_fallback.py should use the real LLM.
+    # If not, it should fall back to HeuristicLLMClient().
     manual_review_mappings = [
         m for m in mappings if m.implementation_type == "manual_review"
     ]
